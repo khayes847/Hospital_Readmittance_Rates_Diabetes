@@ -31,7 +31,7 @@ def column_drop(data):
     lack of variance"""
     print('column_drop')
     data = data.drop(columns=['weight', 'payer_code', 'medical_specialty', 'examide',
-                              'citoglipton', 'metformin-rosiglitazone', 'patient_nbr'])
+                              'citoglipton', 'metformin-rosiglitazone'])
     return data
 
 
