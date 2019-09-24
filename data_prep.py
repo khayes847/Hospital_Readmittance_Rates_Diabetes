@@ -13,9 +13,10 @@ def upload():
     and X databases."""
     print('Upload')
     data = pd.read_csv('data/diabetic_data.csv')
-    X = data.drop(columns=['readmitted'])
-    y = data.readmitted
-    return X, y
+    data = data.set_index('encounter_id')
+    X_val = data.drop(columns=['readmitted'])
+    y_val = data.readmitted
+    return X_val, y_val
 
 
 def y_clean(data):
@@ -30,7 +31,7 @@ def column_drop(data):
     lack of variance"""
     print('column_drop')
     data = data.drop(columns=['weight', 'payer_code', 'medical_specialty', 'examide',
-                              'citoglipton', 'metformin-rosiglitazone'])
+                              'citoglipton', 'metformin-rosiglitazone', 'patient_nbr'])
     return data
 
 
@@ -49,11 +50,11 @@ def x_clean(data):
     data['race'] = data.race.replace({'AfricanAmerican': 'african_american'})
     data['max_glu_serum'] = data.max_glu_serum.replace({'>200': '200_to_300',
                                                         '>300': 'more_than_300'})
-    data['age'] = data.age.replace({'[0-10)': '0_10', '[10-20)': '10_20',
-                                    '[20-30)': '20_30', '[30-40)': '30_40',
-                                    '[40-50)': '40_50', '[50-60)': '50_60',
-                                    '[60-70)': '60_70', '[70-80)': '70_80',
-                                    '[80-90)': '80_90', '[90-100)': '90_100'})
+    data['age'] = data.age.replace({'[0-10)': 1, '[10-20)': 2,
+                                    '[20-30)': 3, '[30-40)': 4,
+                                    '[40-50)': 5, '[50-60)': 6,
+                                    '[60-70)': 7, '[70-80)': 8,
+                                    '[80-90)': 9, '[90-100)': 10})
     data['A1Cresult'] = data.A1Cresult.replace({'>7': '7_to_8', ">8": "over_8"})
     return data
 
@@ -63,9 +64,7 @@ def reset_indices(X_val, y_val):
     Resets indices for X and y datasets"""
     print('reset_indices')
     X_index = list(X_val.index)
-    y = y_val.loc[y_val.index.isin(X_index)==True]
-    X_val = X_val.reset_index(drop=True)
-    y_val = y_val.reset_index(drop=True)
+    y_val = y_val.loc[y_val.index.isin(X_index)==True]
     return X_val, y_val
 
 
@@ -87,108 +86,59 @@ def column_lowercase(data):
     return data
 
 
-def categorize_float(data, column):
-    """Transforms diagnosis data to integer"""
-    diag_type = pd.Series([])
-    for i in range(len(data)):
-        print(round(float(i/len(data))*100, 2))
-        if data[column][i][:1] == 'e':
-            data_num = float(data[column][i][1:])
-            diag_type[i] = data_num+2000
-        elif data[column][i][:1] == 'v':
-            data_num = float(data[column][i][1:])
-            diag_type[i] = data_num+1000
-        elif data[column][i][:1] == '?':
-            diag_type[i] = 0
-        else:
-            diag_type[i] = float(data[column][i])
-    data[column] = diag_type
-    return data
-
-
 def categorize_all(data):
     """Transforms diagnosis data for all three rows"""
-    print('Column diag_1')
-    data = categorize_float(data, 'diag_1')
-    print('Column diag_2')
-    data = categorize_float(data, 'diag_2')
-    print('Column diag_3')
-    data = categorize_float(data, 'diag_3')
+    data['diag_1'] = data.diag_1.swifter.apply(lambda x: float(x[1:])+2000 if x[:1] == 'e'
+                                               else (float(x[1:])+1000 if x[:1] == 'v' else
+                                                     (0 if x[:1] == "?" else
+                                                      (float(x)))))
+    data['diag_2'] = data.diag_2.swifter.apply(lambda x: float(x[1:])+2000 if x[:1] == 'e'
+                                               else (float(x[1:])+1000 if x[:1] == 'v' else
+                                                     (0 if x[:1] == "?" else
+                                                      (float(x)))))
+    data['diag_3'] = data.diag_3.swifter.apply(lambda x: float(x[1:])+2000 if x[:1] == 'e'
+                                               else (float(x[1:])+1000 if x[:1] == 'v' else
+                                                     (0 if x[:1] == "?" else
+                                                      (float(x)))))
     return data
-
-
-def age_upper(data):
-    """Creates column with integer for upper age range limit"""
-    print('age_upper')
-    age_upper = pd.Series([])
-    for i in range(len(data)):
-        print(round(float(i/len(data))*100, 2))
-        if data['age'][i] == '0_10':
-            age_upper[i] = 10
-        elif data['age'][i] == '10_20':
-            age_upper[i] = 20
-        elif data['age'][i] == '20_30':
-            age_upper[i] = 30
-        elif data['age'][i] == '30_40':
-            age_upper[i] = 40
-        elif data['age'][i] == '40_50':
-            age_upper[i] = 50
-        elif data['age'][i] == '50_60':
-            age_upper[i] = 60
-        elif data['age'][i] == '60_70':
-            age_upper[i] = 70
-        elif data['age'][i] == '70_80':
-            age_upper[i] = 80
-        elif data['age'][i] == '80_90':
-            age_upper[i] = 90
-        else:
-            age_upper[i] = 100
-    data['age_upper'] = age_upper
-    return data
-
-
-def diag_range(data, lower, upper):
-    """Creates series that adds up the number of diagnoses in a range"""
-    diag_range_count = pd.Series([])
-    for i in range(len(data)):
-        print(round(float(i/len(data))*100, 2))
-        total = 0
-        if data['diag_1'][i] >= lower and data['diag_1'][i] < upper:
-            total += 1
-        if data['diag_2'][i] >= lower and data['diag_2'][i] < upper:
-            total += 1
-        if data['diag_3'][i] >= lower and data['diag_3'][i] < upper:
-            total += 1
-        diag_range_count[i] = total
-    return diag_range_count
 
 
 def diagnoses_1_3(data):
     """Creates a column summing the number of diagnoses from each category"""
-    print('icd_1')
-    data['icd_1'] = diag_range(data, lower=1, upper=140)
-    print('icd_2')
-    data['icd_2'] = diag_range(data, lower=140, upper=240)
-    print('icd_3')
-    data['icd_3'] = diag_range(data, lower=240, upper=280)
-    print('icd_4')
-    data['icd_4'] = diag_range(data, lower=280, upper=290)
-    print('icd_5')
-    data['icd_5'] = diag_range(data, lower=290, upper=320)
-    print('icd_6')
-    data['icd_6'] = diag_range(data, lower=320, upper=390)
-    print('icd_7')
-    data['icd_7'] = diag_range(data, lower=390, upper=460)
+    data['icd_1_1'] = data['diag_1'].swifter.apply(lambda x: 1 if x>=1 and x<140 else 0)
+    data['icd_1_2'] = data['diag_2'].swifter.apply(lambda x: 1 if x>=1 and x<140 else 0)
+    data['icd_1_3'] = data['diag_3'].swifter.apply(lambda x: 1 if x>=1 and x<140 else 0)
+    data['icd_1'] = data.swifter.apply(lambda row: row.icd_1_1 + row.icd_1_2 + row.icd_1_3, axis=1)
+    data['icd_2_1'] = data['diag_1'].swifter.apply(lambda x: 1 if x>=140 and x<240 else 0)
+    data['icd_2_2'] = data['diag_2'].swifter.apply(lambda x: 1 if x>=140 and x<240 else 0)
+    data['icd_2_3'] = data['diag_3'].swifter.apply(lambda x: 1 if x>=140 and x<240 else 0)
+    data['icd_2'] = data.swifter.apply(lambda row: row.icd_2_1 + row.icd_2_2 + row.icd_2_3, axis=1)
+    data['icd_3_1'] = data['diag_1'].swifter.apply(lambda x: 1 if x>=240 and x<280 else 0)
+    data['icd_3_2'] = data['diag_2'].swifter.apply(lambda x: 1 if x>=240 and x<280 else 0)
+    data['icd_3_3'] = data['diag_3'].swifter.apply(lambda x: 1 if x>=240 and x<280 else 0)
+    data['icd_3'] = data.swifter.apply(lambda row: row.icd_3_1 + row.icd_3_2 + row.icd_3_3, axis=1)
+    data['icd_4_1'] = data['diag_1'].swifter.apply(lambda x: 1 if x>=280 and x<290 else 0)
+    data['icd_4_2'] = data['diag_2'].swifter.apply(lambda x: 1 if x>=280 and x<290 else 0)
+    data['icd_4_3'] = data['diag_3'].swifter.apply(lambda x: 1 if x>=280 and x<290 else 0)
+    data['icd_4'] = data.swifter.apply(lambda row: row.icd_4_1 + row.icd_4_2 + row.icd_4_3, axis=1)
+    data['icd_5_1'] = data['diag_1'].swifter.apply(lambda x: 1 if x>=290 and x<320 else 0)
+    data['icd_5_2'] = data['diag_2'].swifter.apply(lambda x: 1 if x>=290 and x<320 else 0)
+    data['icd_5_3'] = data['diag_3'].swifter.apply(lambda x: 1 if x>=290 and x<320 else 0)
+    data['icd_5'] = data.swifter.apply(lambda row: row.icd_5_1 + row.icd_5_2 + row.icd_5_3, axis=1)
+    data['icd_6_1'] = data['diag_1'].swifter.apply(lambda x: 1 if x>=320 and x<390 else 0)
+    data['icd_6_2'] = data['diag_2'].swifter.apply(lambda x: 1 if x>=320 and x<390 else 0)
+    data['icd_6_3'] = data['diag_3'].swifter.apply(lambda x: 1 if x>=320 and x<390 else 0)
+    data['icd_6'] = data.swifter.apply(lambda row: row.icd_6_1 + row.icd_6_2 + row.icd_6_3, axis=1)
+    data['icd_7_1'] = data['diag_1'].swifter.apply(lambda x: 1 if x>=390 and x<460 else 0)
+    data['icd_7_2'] = data['diag_2'].swifter.apply(lambda x: 1 if x>=390 and x<460 else 0)
+    data['icd_7_3'] = data['diag_3'].swifter.apply(lambda x: 1 if x>=390 and x<460 else 0)
+    data['icd_7'] = data.swifter.apply(lambda row: row.icd_7_1 + row.icd_7_2 + row.icd_7_3, axis=1)
+    data = data.drop(columns = ['icd_1_1', 'icd_1_2', 'icd_1_3', 'icd_2_1', 'icd_2_2',
+                                'icd_2_3', 'icd_3_1', 'icd_3_2', 'icd_3_3', 'icd_4_1',
+                                'icd_4_2', 'icd_4_3', 'icd_5_1', 'icd_5_2', 'icd_5_3',
+                                'icd_6_1', 'icd_6_2', 'icd_6_3', 'icd_7_1', 'icd_7_2',
+                                'icd_7_3'])
     return data
-
-
-# def diag_range2(row, lower, upper):
-#     """Creates a column summing the number of diagnoses in a range"""
-#     diag_num = 0
-#     diag_num += 1 if row['diag_1']>=lower and row['diag_1']<upper
-#     diag_num += 1 if row['diag_2']>=lower and row['diag_2']<upper
-#     diag_num += 1 if row['diag_3']>=lower and row['diag_3']<upper
-#     return int(diag_num)
 
 
 def diagnoses_2_3(data):
@@ -257,22 +207,6 @@ def diagnoses_3_3(data):
     return data
 
 
-
-# def diagnoses_3_3(data):
-#     """Creates a column summing the number of diagnoses from each category"""
-#     print('icd_15')
-#     data['icd_15'] = diag_range(data, lower=760, upper=780)
-#     print('icd_16')
-#     data['icd_16'] = diag_range(data, lower=780, upper=800)
-#     print('icd_17')
-#     data['icd_17'] = diag_range(data, lower=800, upper=1000)
-#     print('icd_18')
-#     data['icd_18'] = diag_range(data, lower=1000, upper=1100)
-#     print('icd_19')
-#     data['icd_19'] = diag_range(data, lower=2000, upper=2100)
-#     return data
-
-
 def number_meds(data, col_list):
     """Creates column with number of medications"""
     for col in col_list:
@@ -330,7 +264,6 @@ def med_columns(data):
                 'glimepiride-pioglitazone', 'metformin-pioglitazone']
     data = number_meds(data, col_list)
     data = num_down(data, col_list)
-    data = num_steady(data, col_list)
     data = num_up(data, col_list)
     return data
 
@@ -343,40 +276,40 @@ def clean_1_5():
     X_2 = column_drop(X_1)
     X_3 = null_value_drop(X_2)
     X_4 = x_clean(X_3)
-    X_5, y_3 = reset_indices(X_4, y_2)
-    X_6 = values_lower(X_5)
-    X_7 = column_lowercase(X_6)
-    X_8 = categorize_all(X_7)
-    X_9 = age_upper(X_8)
-    X_9.to_csv('./data/X_1_5.csv', index=None)
-    y_3.to_csv('./data/y_cleaned.csv', index=None)
-    return X_9, y_3
+    X_5 = values_lower(X_4)
+    X_6 = column_lowercase(X_5)
+    X_7 = categorize_all(X_6)
+    X_7.to_csv('./data/X_1_5.csv', index=None)
+    y_2.to_csv('./data/y_cleaned.csv', index=None)
+    return X_7, y_2
 
 
-def clean_2_5(X_9):
+def clean_2_5(X_7):
     """Runs all cleaning functions"""
-    X_10 = diagnoses_1_3(X_9)
-    X_10.to_csv('./data/X_2_5.csv', index=None)
+    X_8 = diagnoses_1_3(X_7)
+    X_8.to_csv('./data/X_2_5.csv', index=None)
+    return X_8
+
+
+def clean_3_5(X_8):
+    """Runs all cleaning functions"""
+    X_9 = diagnoses_2_3(X_8)
+    X_9.to_csv('./data/X_3_5.csv', index=None)
+    return X_9
+
+ 
+def clean_4_5(X_9):
+    """Runs all cleaning functions"""
+    X_10 = diagnoses_3_3(X_9)
+    X_10.to_csv('./data/X_4_5.csv', index=None)
     return X_10
 
 
-def clean_3_5(X_10):
+def clean_5_5(X_10, y_2):
     """Runs all cleaning functions"""
-    X_11 = diagnoses_2_3(X_10)
-    X_11.to_csv('./data/X_3_5.csv', index=None)
-    return X_11
-
- 
-def clean_4_5(X_11):
-    """Runs all cleaning functions"""
-    X_12 = diagnoses_3_3(X_11)
-    X_12.to_csv('./data/X_4_5.csv', index=None)
-    return X_12
-
-
-def clean_5_5(X_12):
-    """Runs all cleaning functions"""
-    X_13 = med_columns(X_12)
-    X_13.to_csv('./data/X_cleaned.csv', index=None)
-    return X_13
+    X_11 = med_columns(X_10)
+    X_12, y_3 = reset_indices(X_11, y_2)
+    X_12.to_csv('./data/X_cleaned.csv', index=None)
+    y_3.to_csv('./data/y_cleaned.csv', index=None)
+    return X_12, y_3
      
