@@ -3,7 +3,7 @@ This file contains assorted functions.
 """
 
 import pandas as pd
-import matplotlib as plt
+import matplotlib.pyplot as plt
 
 
 def concat(x_val, y_val):
