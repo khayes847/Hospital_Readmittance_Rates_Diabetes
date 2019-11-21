@@ -500,9 +500,22 @@ def x_dummy_variables(x_val):
     return x_val
 
 
-def continuous_bin(x_val):
-    """Bins continuous features with abnormal distribution or significant outliers"""
-    x_val['lab_binned'] = pd.qcut(X2['num_lab_procedures'], 20, labels=False)
+def outliers_bin(x_val):
+    """Bins some continuous features with significant outliers"""
+    binned_columns = ['outpatient', 'emergency', 'inpatient']
+    for col in binned_columns:
+        x_val[f'{col}_binned'] = x_val[col].swifter.apply(lambda x: 3 if x>3 else
+                                                          (2 if 2<=x<=3 else x))
+    x_val = x_val.drop(columns = binned_columns)
+    return x_val
+
+
+def outliers_log(x_val):
+    """Creates log of some continuous features with significant outliers"""
+    log_columns = ['time_in_hospital', 'num_lab_procedures', 'num_medications']
+    for column in log_columns:
+        x_val[f'{column}_log'] = np.log(x_val[column])
+    x_val = x_val.drop(columns = log_columns)
 
 
 def clean():
@@ -521,5 +534,7 @@ def clean():
     x_11 = diagnoses_2_3(x_10)
     x_12 = diagnoses_3_3(x_11)
     x_13 = med_columns(x_12)
-    x_final = x_dummy_variables(x_13)
+    x_14 = x_dummy_variables(x_13)
+    x_15 = outliers_bin(x_14)
+    x_final = outliers_log(x_15)
     return x_final, y_final
