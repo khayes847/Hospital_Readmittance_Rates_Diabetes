@@ -4,6 +4,7 @@ This file contains functions for use in data preparation.
 
 
 import pandas as pd
+import numpy as np
 import swifter
 import functions as f
 
@@ -502,6 +503,7 @@ def x_dummy_variables(x_val):
 
 def outliers_bin(x_val):
     """Bins some continuous features with significant outliers"""
+    print('outliers_bin')
     binned_columns = ['outpatient', 'emergency', 'inpatient']
     for col in binned_columns:
         x_val[f'{col}_binned'] = x_val[col].swifter.apply(lambda x: 3 if x>3 else
@@ -512,10 +514,12 @@ def outliers_bin(x_val):
 
 def outliers_log(x_val):
     """Creates log of some continuous features with significant outliers"""
+    print('outliers_log')
     log_columns = ['time_in_hospital', 'num_lab_procedures', 'num_medications']
     for column in log_columns:
         x_val[f'{column}_log'] = np.log(x_val[column])
     x_val = x_val.drop(columns = log_columns)
+    return x_val
 
 
 def clean():

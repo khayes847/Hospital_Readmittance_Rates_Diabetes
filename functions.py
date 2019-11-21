@@ -2,43 +2,60 @@
 This file contains assorted functions.
 """
 
+import itertools
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.metrics import accuracy_score, f1_score, confusion_matrix
+from sklearn.dummy import DummyClassifier
 
 
-def concat(x_val, y_val):
-    """Concats given X and y datasets"""
-    data = pd.concat([x_val, y_val], axis=1)
-    return data
 
 
-def split_xy(data):
-    """Splits data along X and target"""
-    x_val = data.drop(columns=['readmitted'])
-    y_val = data.readmitted
-    return x_val, y_val
+def standardize_train_test_split(x_val, y_val, ts=.25, rs=42):
+    """Standardizes X data and creates stratified train-test split"""
+    scaler = MinMaxScaler()
+    x_val = scaler.fit_transform(x_val)
+    x_train, x_test, y_train, y_test = train_test_split(x_val, y_val, test_size=ts,
+                                                        random_state=rs, stratify=y_val)
+    return x_train, x_test, y_train, y_test
 
 
-def remove_repeats_deaths(x_val, y_val):
-    """Removes repeated visits based on order. Removes
-    patients discharged to hospice care or expired"""
-    data = concat(x_val, y_val)
-    data2 = data.sort_index()
-    data3 = data2.loc[~(data2.duplicated(subset=['patient_nbr']))]
-    discharge_list = [11, 13, 14, 19, 20, 21]
-    data4 = data3.loc[~(data3.discharge_disposition_id.isin(discharge_list))]
-    data5 = data4.drop(columns=['patient_nbr'])
-    x_val_new, y_val_new = split_xy(data5)
-    return x_val_new, y_val_new
+def plot_confusion_matrix(cm_val, classes, normalize=False,
+                          title="Confusion Matrix"):
+    """Creates graph of confusion matrix"""
+    plt.grid(None)
+    plt.imshow(cm_val, interpolation='nearest', cmap=plt.cm.Blues)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation='45')
+    plt.yticks(tick_marks, classes)
+    if normalize:
+        cm_val = cm_val.astype('float') / cm_val.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+    thresh = cm_val.max()/2
+    for i, j in itertools.product(range(cm_val.shape[0]),
+                                  range(cm_val.shape[1])):
+        plt.text(j, i, cm_val[i, j], horizontalalignment="center",
+                 color="white" if cm_val[i, j] > thresh else "black")
+    plt.tight_layout()
+    plt.ylabel('True \nlabel', rotation=0)
+    plt.xlabel('Predicted label')
 
 
-def visualize_y(y_val, y_train, y_test):
-    """Visualizes split data"""
-    fig, ax_val = plt.subplots(1, 3, sharey=True, figsize=(12, 3))
-    fig.set_facecolor('lightgrey')
-    ax_val[0].bar(y_val.unique(), height=list(y_val.value_counts()))
-    ax_val[0].set_title("y")
-    ax_val[1].bar(y_val.unique(), height=list(y_train.value_counts()))
-    ax_val[1].set_title("y_train")
-    ax_val[2].bar(y_val.unique(), height=list(y_test.value_counts()))
-    ax_val[2].set_title("y_test")
+def dummy_regression(x_train, x_test, y_train, y_test):
+    """Creates dummy logistic regression"""
+    dummy = DummyClassifier(strategy='most_frequent', random_state=42).fit(x_train, y_train)
+    dummy_pred = dummy.predict(x_test)
+    print('Test Accuracy score: ', accuracy_score(y_test, dummy_pred))
+    print('Test F1 score: ', f1_score(y_test, dummy_pred, average='micro'))
+    cm_val = confusion_matrix(y_test, dummy_pred)
+    cm_labels = ['No', '>6 months', '<=6 months']
+    plot_confusion_matrix(cm_val, cm_labels, title="Dummy Regression")
+
+
