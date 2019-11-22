@@ -23,7 +23,7 @@ def upload():
 def y_clean(y_val):
     """Replaces readmitted data with cleaned values"""
     print('y_clean')
-    y_val = y_val.replace({'NO': 0, '>30': 1, '<30': 2})
+    y_val = y_val.replace({'NO': 0, '>30': 1, '<30': 1})
     return y_val
 
 
