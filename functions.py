@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, recall_score
+from sklearn.metrics import auc, precision_recall_curve
 from sklearn.dummy import DummyClassifier
 from sklearn.linear_model import LogisticRegression
 
@@ -47,17 +48,31 @@ def plot_confusion_matrix(cm_val, classes, normalize=False,
     plt.tight_layout()
     plt.ylabel('True \nlabel', rotation=0)
     plt.xlabel('Predicted label')
+    plt.show()
+
+
+def plot_pr_curve(model, x_test, y_test, title='Precision-Recall Curve'):
+    model_probs = (model.predict_proba(x_test))[:,1]
+    model_precision, model_recall, _ = precision_recall_curve(y_test, model_probs)
+    no_skill = len(y_test[y_test==1]) / len(y_test)
+    plt.plot([0, 1], [no_skill, no_skill], linestyle='--', label='No Skill')
+    plt.plot(model_recall, model_precision, marker='.', label='Logistic')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title(title)
+    plt.legend()
+    plt.show()
 
 
 def dummy_regression(x_train, x_test, y_train, y_test):
     """Creates dummy logistic regression"""
     dummy = DummyClassifier(strategy='most_frequent', random_state=42).fit(x_train, y_train)
     dummy_pred = dummy.predict(x_test)
+    print('Recall score: ', recall_score(y_test, dummy_pred, average='weighted'))
     print('Test Accuracy score: ', accuracy_score(y_test, dummy_pred))
     print('Test F1 score: ', f1_score(y_test, dummy_pred, average='weighted'))
-    print('Recall score: ', recall_score(y_test, dummy_pred, average='weighted'))
     cm_val = confusion_matrix(y_test, dummy_pred)
-    cm_labels = ['No', 'Yes']
+    cm_labels = ['Not', 'Return']
     plot_confusion_matrix(cm_val, cm_labels, title="Dummy Regression")
 
 
@@ -74,7 +89,7 @@ def log_gridsearch(x_train, y_train, x_test, y_test):
                      'fit_intercept': [True, False],
                      'warm_start': [True, False]
                     }
-    lr_grid_search = GridSearchCV(lr_clf, lr_param_grid, cv=3, n_jobs=-3, verbose=10,
+    lr_grid_search = GridSearchCV(lr_clf, lr_param_grid, cv=3, n_jobs=-3,
                                   scoring='recall', return_train_score=True)
     lr_grid_search.fit(x_train, y_train)
     lr_gs_training_score = np.mean(lr_grid_search.cv_results_['mean_train_score'])
@@ -89,10 +104,12 @@ def log_gridsearch(x_train, y_train, x_test, y_test):
                                 lr_grid_search.best_params_['fit_intercept'],
                                 warm_start=lr_grid_search.best_params_['warm_start'])
     lr_clf.fit(x_train, y_train)
+    y_probs = (lr_clf.predict_proba(x_test))[:, 1]
     y_pred_test = lr_clf.predict(x_test)
+    print('Recall score: ', recall_score(y_test, y_pred_test, average='weighted'))
     print('Test Accuracy score: ', accuracy_score(y_test, y_pred_test))
     print('Test F1 score: ', f1_score(y_test, y_pred_test, average='weighted'))
-    print('Recall score: ', recall_score(y_test, y_pred_test, average='weighted'))
     cm_val = confusion_matrix(y_test, y_pred_test)
-    cm_labels = ['No', 'Yes']
+    cm_labels = ['Not', 'Return']
     plot_confusion_matrix(cm_val, cm_labels, title="Logistic Regression")
+    plot_pr_curve(lr_clf, x_test, y_test, title='Precision-Recall Curve')
