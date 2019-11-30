@@ -12,7 +12,7 @@ from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, recall_s
 from sklearn.metrics import auc, precision_recall_curve
 from sklearn.dummy import DummyClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, GradientBoostingClassifier
 
 
 def standardize_train_test_split(x_val, y_val, ts=.25, rs=42):
@@ -50,9 +50,9 @@ def plot_confusion_matrix(cm_val, classes, normalize=False,
 
 def scores(y_test, y_pred_test):
     """Prints Recall, Accuracy, and F1 Score"""
-    print('Recall score: ', recall_score(y_test, y_pred_test, average='weighted'))
+    print('Recall score: ', recall_score(y_test, y_pred_test))
     print('Test Accuracy score: ', accuracy_score(y_test, y_pred_test))
-    print('Test F1 score: ', f1_score(y_test, y_pred_test, average='weighted'))
+    print('Test F1 score: ', f1_score(y_test, y_pred_test))
 
 
 def plot_pr_curve(model, x_test, y_test, title='Precision-Recall Curve'):
@@ -61,12 +61,14 @@ def plot_pr_curve(model, x_test, y_test, title='Precision-Recall Curve'):
     model_precision, model_recall, _ = precision_recall_curve(y_test, model_probs)
     no_skill = len(y_test[y_test==1]) / len(y_test)
     plt.plot([0, 1], [no_skill, no_skill], linestyle='--', label='No Skill')
-    plt.plot(model_recall, model_precision, marker='.', label='Logistic')
+    plt.plot(model_recall, model_precision, marker='.', label='Model')
     plt.xlabel('Recall')
     plt.ylabel('Precision')
     plt.title(title)
     plt.legend()
     plt.show()
+    model_auc = auc(model_recall, model_precision)
+    print(f'AUC: {model_auc}')
 
 
 def scores_cm_pr(model, x_test, y_test, y_pred_test, cm_title):
@@ -82,7 +84,7 @@ def dummy_regression(x_train, x_test, y_train, y_test):
     """Creates dummy logistic regression"""
     dummy = DummyClassifier(strategy='most_frequent', random_state=42).fit(x_train, y_train)
     dummy_pred = dummy.predict(x_test)
-    scores(y_test, y_pred_test)
+    scores(y_test, dummy_pred)
     cm_val = confusion_matrix(y_test, dummy_pred)
     cm_labels = ['Not', 'Return']
     plot_confusion_matrix(cm_val, cm_labels, title="Dummy Regression")
@@ -152,8 +154,8 @@ def adaboost_gridsearch(x_train, y_train, x_test, y_test):
     """Conducts gridsearch for adaboost, performs regression,
     and creates confusion matrix and precision-recall curve."""
     adaboost_clf = AdaBoostClassifier(random_state=42)
-    adaboost_param_grid = {'n_estimators': [50, 60, 80, 100, 120],
-                           'learning_rate': [1.4, 1.2, 1.0, 0.8, 0.6]
+    adaboost_param_grid = {'n_estimators': [50, 60, 80, 100],
+                           'learning_rate': [1.6, 1.4, 1.2, 1, 0.8]
                           }
     adaboost_grid_search = GridSearchCV(adaboost_clf, adaboost_param_grid, cv=3,
                                         n_jobs=-2, scoring='recall',
