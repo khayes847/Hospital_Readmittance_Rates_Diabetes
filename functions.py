@@ -174,3 +174,38 @@ def adaboost_gridsearch(x_train, y_train, x_test, y_test):
     scores_cm_pr(adaboost_clf, x_test, y_test, y_pred_test, cm_title='Adaboost')
 
 
+def gboost_gridsearch(x_train, y_train, x_test, y_test):
+    """Conducts gridsearch for adaboost, performs regression,
+    and creates confusion matrix and precision-recall curve."""
+    gboost_clf = GradientBoostingClassifier(random_state=42, validation_fraction=0.2,
+                                            n_iter_no_change=5, tol=0.01)
+    gboost_param_grid = {'n_estimators': [100, 300, 500],
+                         'min_samples_split': [2, 3, 4],
+                         'min_samples_leaf': [1, 2, 3],
+                         'max_depth': [3, 5, 7],
+                         'warm_start': [True, False]
+                        }
+    gboost_grid_search = GridSearchCV(gboost_clf, gboost_param_grid, cv=3,
+                                      n_jobs=-2, scoring='recall',
+                                      return_train_score=True)
+    gboost_grid_search.fit(X_train, y_train)
+    print("Best Parameter Combination Found During Grid Search:")
+    print(gboost_grid_search.best_params_)
+    gboost_clf = GradientBoostingClassifier(random_state=42,
+                                            n_estimators =
+                                            gboost_grid_search.best_params_['n_estimators'],
+                                            min_samples_split =
+                                            gboost_grid_search.best_params_['min_samples_split'],
+                                            min_samples_leaf =
+                                            gboost_grid_search.best_params_['min_samples_leaf'],
+                                            max_depth =
+                                            gboost_grid_search.best_params_['max_depth'],
+                                            warm_start =
+                                            gboost_grid_search.best_params_['warm_start'],
+                                            validation_fraction=0.2,
+                                            n_iter_no_change=5,
+                                            tol=0.01
+                                            )
+    gboost_clf.fit(x_train, y_train)
+    y_pred_test = gboost_clf.predict(x_test)
+    scores_cm_pr(gboost_clf, x_test, y_test, y_pred_test, cm_title='Gradient Boosting')
