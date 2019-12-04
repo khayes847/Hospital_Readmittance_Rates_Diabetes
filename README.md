@@ -15,39 +15,39 @@
 
 - **Data Understanding**:
   We obtained the data from UCI's machine learning repository (https://archive.ics.uci.edu/ml/datasets/diabetes+130-us+hospitals+for+years+1999-2008#). It consists of 100 thousand hospitalizations listing diabetes was listed as a diagnosis. These were collected from 1998-2008 from 130 hospitals.
-  The target variable describes whether the patients are readmiited within 30 days, after more than 30 days, or not at all.
-  The data contains 55 features. These include demographics, admission information (ex. patient id, discharge code, etc), and information regarding previous admissions. It also includes glucose serum and A1c test results (when the tests were performed), up to three diagnoses, and information on medications used. A full description of the features, including missing data, can be found at https://www.hindawi.com/journals/bmri/2014/781670/tab1.
+  The target variable describes whether the patients are readmitted within 30 days, after more than 30 days, or not at all.
+  The data contains 55 features. These include demographics, admission information (ex. patient id, discharge code, etc.), and information regarding previous admissions. It also includes glucose serum and A1c test results (when the tests were performed), up to three diagnoses, and information on medications used. A full description of the features, including missing data, can be found at https://www.hindawi.com/journals/bmri/2014/781670/tab1.
 
 - **Data Preparation**:
   We first separate the target variable, and change the target values to whether they were readmitted at all. We drop rows with null values when doing so won't lead to excessive data loss. In addition, we remove all instances where the same patient is hospitalized multiple times, or where the discharge code suggests that the patient would not be able to return due to either death or imprisonment. We also drop features that have excessive missing data or that provide no information.
-  Next, we bin categorical data. For non-ordinal categorical data (such as race), we bin it with the purpose of creating bins as equal in size as possible, while ordinal data is binned to approximate a normal distribution. In addition, when data is presented using hospital code (diagonses, admissions, etc), we determine these assignations using https://www.findacode.com, and bin them accordingly. We create a feature summing each of the diagnoses by category, and features that sum the non-insulin medication data.
+  Next, we bin categorical data. For non-ordinal categorical data (such as race), we bin it with the purpose of creating bins as equal in size as possible, while ordinal data is binned to approximate a normal distribution. In addition, when data is presented using hospital code (diagnoses, admissions, etc), we determine these assignations using https://www.findacode.com, and bin them accordingly. We create a feature summing each of the diagnoses by category, and features that sum the non-insulin medication data.
   After this, we create dummy variables for each of the categorical features. Finally, we bin some numeric data and create log distributions for others in order to remove outliers and to increase distribution normality.
 
 - **Modeling**:
-  To determine our baseline, I will vectorize the words in each comment, and perform a simple logistic regression using only the binary 'offensive' categorization as a target. For our final model, I will use a multinary target that reflects both offensiveness and the presence of 'identity group' content. In addition, this model will use a Keras deep learning algorithm.
+  To determine our baseline, we create a dummy classifier to serve as our baseline model. We then use the data to create a logistic regression, a random forests classifier, an AdaBoost classifier, and a gradient boosting classifier. For each of these, we split the data into a different stratified training (75%) and test (25%) dataset, and standardize the features to ensure that they are using the same scale. After this, we use a grid search to find the best parameters for each.
 
 - **Evaluation**:
-  Since the inoffensive/offensive comment ratio is imbalanced, and since we have an interest in minimizing false 'offensive' assignations more than false 'inoffensive' assignations, I will use a custom cost function that penalizes/rewards each categorization appropriately. However, when searching for parameters, I will use the F1-score for the sake of simplicity to find the parameters that best balance our precision and recall. 
+  Since we have a greater interest in creating a model that minimizes incorrect assignations of "no return admission" than we have in creating a model that minimizes incorrect assignations of "return admission", we will use the recall score of each model as our evaluation metric. For comparison's sake, we will also populate each model's accuracy and F1 score, and create a confusion matrix for each. For additional comparison, since the target values are imbalanced, we will create a precision-recall curve for each model instead of an ROC curve, and we will determine the AUC for each.
 
 - **Deployment**:
-  I will save and make available my final Keras model.
+  I will save and make available my final models.
 
 ## Files in Repository:
 
 * __README.md__ - A summary of the project.
 
-* __technical_notebook.ipynb__ - Step-by-step walk through of the modeling/optimization process with rationale explaining decisions made. After cleaning and preparing the data, the notebook uses a gridsearch to create a logistic regression of the vectorized comments, and determines a baseline score using a custom cost function. For comparison, it also shows the score using only test data that contains 'identity' content. It then shows the process of creating a Keras deep-learning model, and compares the resulting scores (both for the entire test dataset and for only 'identity group' comments) to the prior model.
+* __technical_notebook.ipynb__ - Step-by-step walk through of the modeling/optimization process with rationale explaining decisions made. After cleaning and preparing the data, the notebook creates and compares a dummy categorizer, a logistic regression, a random forests classifier, an AdaBoost classifier, and a gradient boosting classifier, using the description listed in 'Modeling'. It then graphs the recall score for each model.
 
 * __data_prep.py__ - Gathers and prepares data for analysis.
 
-* __functions.py__ - Provides general functions used in the technical notebook, including Keras modeling and cost function calculation.
+* __functions.py__ - Provides functions used in the technical notebook.
 
-* __train_bias.csv__ - The raw dataset prior to data preparation.
+* __presentation.pptx__ - A presentation detailing the project and its results.
 
-* __target.csv__ - The cleaned target variables.
+* __presentation.pdf__ - A presentation detailing the project and its results (in pdf form).
 
-* __target.csv__ - The cleaned feature variables.
+* __images__ - Folder of images used in presentation.
 
-* __presentation.pptx__ - a presentation detailing the project and its results.
+* __models__ - Folder of pickled models used.
 
-* __presentation.pdf__ - a presentation detailing the project and its results (in pdf form).
+* __git_ignore__ - Prevents Git from uploading data folder.
