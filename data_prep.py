@@ -76,7 +76,8 @@ def column_drop(x_val):
 
 
 def x_clean(x_val):
-    """Cleans string values in X database"""
+    """Bins categorical data based on type, changes test data to ordinal,
+    shortens some column names."""
     print('x_clean')
     x_val['race'] = x_val.race.replace({'AfricanAmerican': 'race_black',
                                         'Asian': 'race_other',

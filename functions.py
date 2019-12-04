@@ -14,6 +14,7 @@ from sklearn.dummy import DummyClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.externals import joblib
 
 
 def standardize_train_test_split(x_val, y_val, t_s=.25, r_s=42):
@@ -31,10 +32,10 @@ def standardize_train_test_split(x_val, y_val, t_s=.25, r_s=42):
 def plot_confusion_matrix(cm_val, classes, normalize=False,
                           title="Confusion Matrix"):
     """Creates graph of confusion matrix"""
-    plt.grid(None)
     # pylint: disable=no-member
     plt.imshow(cm_val, interpolation='nearest', cmap=plt.cm.Blues)
-    # pylint: disable=no-member
+    # pylint: enable=no-member
+    plt.grid(None)
     plt.title(title)
     plt.colorbar()
     tick_marks = np.arange(len(classes))
@@ -50,6 +51,7 @@ def plot_confusion_matrix(cm_val, classes, normalize=False,
     plt.tight_layout()
     plt.ylabel('True \nlabel', rotation=0)
     plt.xlabel('Predicted label')
+    plt.grid(None)
     plt.show()
 
 
@@ -97,9 +99,13 @@ def dummy_regression(x_train, x_test, y_train, y_test):
     cm_val = confusion_matrix(y_test, dummy_pred)
     cm_labels = ['Not', 'Return']
     plot_confusion_matrix(cm_val, cm_labels, title="Dummy Regression")
+    r_dict = {}
+    r_dict['Dummy Reg'] = float(recall_score(y_test, dummy_pred))
+    joblib.dump(dummy, 'models/dummy.pkl')
+    return r_dict
 
 
-def log_gridsearch(x_train, y_train, x_test, y_test):
+def log_gridsearch(x_train, y_train, x_test, y_test, r_dict):
     """Conducts gridsearch for logistic regression, performs regression, and
     creates confusion matrix and precision-recall curve."""
     lr_clf = LogisticRegression(random_state=42)
@@ -125,9 +131,12 @@ def log_gridsearch(x_train, y_train, x_test, y_test):
     y_pred_test = lr_clf.predict(x_test)
     scores_cm_pr(lr_clf, x_test, y_test,
                  y_pred_test, cm_title='Logistic Regression')
+    r_dict['Logistic Reg'] = float(recall_score(y_test, y_pred_test))
+    joblib.dump(lr_clf, 'models/lr_clf.pkl')
+    return r_dict
 
 
-def forests_gridsearch(x_train, y_train, x_test, y_test):
+def forests_gridsearch(x_train, y_train, x_test, y_test, r_dict):
     """Conducts gridsearch for random forests with bootstrapping,
     performs regression, and creates confusion matrix
     and precision-recall curve."""
@@ -158,9 +167,12 @@ def forests_gridsearch(x_train, y_train, x_test, y_test):
     y_pred_test = rf_clf.predict(x_test)
     scores_cm_pr(rf_clf, x_test, y_test,
                  y_pred_test, cm_title='Random Forests')
+    r_dict['Random Forests'] = float(recall_score(y_test, y_pred_test))
+    joblib.dump(rf_clf, 'models/forests.pkl')
+    return r_dict
 
 
-def adaboost_gridsearch(x_train, y_train, x_test, y_test):
+def adaboost_gridsearch(x_train, y_train, x_test, y_test, r_dict):
     """Conducts gridsearch for adaboost, performs regression,
     and creates confusion matrix and precision-recall curve."""
     adaboost_clf = AdaBoostClassifier(random_state=42)
@@ -183,9 +195,12 @@ def adaboost_gridsearch(x_train, y_train, x_test, y_test):
     y_pred_test = adaboost_clf.predict(x_test)
     scores_cm_pr(adaboost_clf, x_test, y_test,
                  y_pred_test, cm_title='Adaboost')
+    r_dict['AdaBoost'] = float(recall_score(y_test, y_pred_test))
+    joblib.dump(adaboost_clf, 'models/adaboost.pkl')
+    return r_dict
 
 
-def gboost_gridsearch(x_train, y_train, x_test, y_test):
+def gboost_gridsearch(x_train, y_train, x_test, y_test, r_dict):
     """Conducts gridsearch for adaboost, performs regression,
     and creates confusion matrix and precision-recall curve."""
     gboost_clf = GradientBoostingClassifier(random_state=42,
@@ -224,3 +239,18 @@ def gboost_gridsearch(x_train, y_train, x_test, y_test):
     y_pred_test = gboost_clf.predict(x_test)
     scores_cm_pr(gboost_clf, x_test, y_test, y_pred_test,
                  cm_title='Gradient Boosting')
+    r_dict['Gradient Boosting'] = float(recall_score(y_test, y_pred_test))
+    joblib.dump(gboost_clf, 'models/gradient_boost.pkl')
+    return r_dict
+
+
+def recall_compare(r_dict):
+    """Creates graph comparing recall values for each model."""
+    plt.figure(figsize=(10, 6))
+    plt.bar(r_dict.keys(), r_dict.values(), label='Model scores')
+    plt.xticks(list(r_dict.keys()))
+    plt.xlabel('Model')
+    plt.ylabel('Recall')
+    plt.legend()
+    plt.savefig(f'images/recall_scores.png')
+    plt.show()
